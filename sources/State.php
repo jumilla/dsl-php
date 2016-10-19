@@ -2,7 +2,7 @@
 
 namespace Spellu\Dsl;
 
-class State implements Funcuit
+class State extends Funcuit
 {
 	use ActionPool;
 	use ExpressionPool;
@@ -32,28 +32,10 @@ class State implements Funcuit
 		return $this->expressionA($method, $args);
 	}
 
-	public function __funcuit_save()
-	{
-		return null;
-	}
-
-	public function __funcuit_restore($state)
-	{
-	}
-
-	public function evaluate($thunk)
-	{
-		while ($thunk->isExpression()) {
-			$thunk = thunk($thunk->evaluate($this));
-		}
-
-		return $thunk;
-	}
-
-	public function run(Expression $expression, $initialValue)
+	public function runState(Expression $expression, $initialValue)
 	{
 		$this->value = $initialValue;
 
-		return $this->evaluate(thunk($expression))->value();
+		return $this->evaluate(thunk($expression));
 	}
 }

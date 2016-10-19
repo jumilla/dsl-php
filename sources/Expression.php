@@ -2,121 +2,247 @@
 
 namespace Spellu\Dsl;
 
-interface Expression
+interface Evaluable
 {
 	/**
-	 * @return Thunk
+	 * @param string $name
+	 * @param array $args
+	 * @return Spellu\Dsl\Evaluable
 	 */
-	public function evaluate();
+	public function bind($name, $arguments);
 
 	/**
-	 * @return Thunk
+	 * @param callable $reducer
+	 * @return Spellu\Dsl\Evaluable
+	 */
+	public function reduce(callable $reducer);
+
+	/**
+	 * @return Spellu\Dsl\Thunk
 	 */
 	public function __invoke();
 
-	/**
-	 * @param string $method
-	 * @param array $args
-	 * @return Spellu\Dsl\Expression
-	 */
-	public function __call($method, $args);
 }
 
-class ExpressionCall implements Expression
+abstract class Expression implements Evaluable
 {
 	/**
-	 * @param Funcuit $funcuit
+	 * @var Spellu\Dsl\Funcuit
+	 */
+	protected $funcuit;
+
+	/**
+	 * @var array
+	 */
+	protected $reducers = [];
+
+	/**
+	 * @param Spellu\Dsl\Funcuit $funcuit
+	 */
+	public function __construct(Funcuit $funcuit)
+	{
+		$this->funcuit = $funcuit;
+	}
+
+	/**
+	 * @param string $name
+	 * @param array $args
+	 * @return Spellu\Dsl\Evaluable
+	 */
+	public function bind($name, $arguments)
+	{
+		$expression = $this->funcuit->expressionA($name, $arguments);
+		return new ExpressionConcat($this->funcuit, [$this, $expression]);
+	}
+
+	/**
+	 * @param callable $reducer
+	 * @return Spellu\Dsl\Evaluable
+	 */
+	public function reduce(callable $reducer)
+	{
+		$this->reducers[] = $reducer;
+		return $this;
+	}
+
+	/**
+	 * @param int $offset
+	 * @return Spellu\Dsl\Evaluable
+	 */
+	public function reduceN($offset)
+	{
+		$this->reducers[] = function ($result) use ($offset) {
+			if (!is_array($result)) throw new DslException('reducer: reduceN: result is not array.');
+			return $result[$offset];
+		};
+		return $this;
+	}
+
+	/**
+	 * @return Spellu\Dsl\Evaluable
+	 */
+	public function reduceL()
+	{
+		$this->reducers[] = function ($result) {
+			if (!is_array($result)) throw new DslException('reducer: reduceL: result is not array.');
+			return current($result);
+		};
+		return $this;
+	}
+
+	/**
+	 * @return Spellu\Dsl\Evaluable
+	 */
+	public function reduceR()
+	{
+		$this->reducers[] = function ($result) {
+			if (!is_array($result)) throw new DslException('reducer: reduceR: result is not array.');
+			return end($result);
+		};
+		return $this;
+	}
+
+	/**
+	 * @param string $name
+	 * @param array $args
+	 * @return Spellu\Dsl\Evaluable
+	 */
+	public function __call($name, $arguments)
+	{
+		if (substr($name, 0, 6) === 'reduce') {
+			call_user_func_array([$this->funcuit, $name], array_merge([$this], $arguments));
+			return $this;
+		}
+		if ($name[0] === '_') $name = substr($name, 1);
+		return $this->bind($name, $arguments);
+	}
+
+	/**
+	 * @return Spellu\Dsl\Thunk
+	 */
+	public function __invoke()
+	{
+		$result = $this->evaluate();
+
+		if (!$result->isFailure() && $this->reducers) {
+			$value = $result->value();
+			foreach ($this->reducers as $reducer) {
+				$value = $reducer($value);
+			}
+			$result = thunk($value);
+		}
+
+		return $result;
+	}
+
+	/**
+	 * @return Spellu\Dsl\Thunk
+	 */
+	abstract protected function evaluate();
+
+	/**
+	 * @return string
+	 */
+	public function __toString()
+	{
+		return get_class($this);
+	}
+}
+
+class ExpressionCall extends Expression
+{
+	protected $callable;
+
+	protected $bindedThunks;
+
+	/**
+	 * @param Spellu\Dsl\Funcuit $funcuit
 	 * @param Spellu\Dsl\Action | Closure $callable
 	 * @param array(Spellu\Dsl\Thunk) $thunks
 	 */
 	public function __construct(Funcuit $funcuit, callable $callable, array $thunks)
 	{
-		$this->funcuit = $funcuit;
+		parent::__construct($funcuit);
 		$this->callable = $callable;
 		$this->bindedThunks = $thunks;
 	}
 
 	/**
-	 * @return Thunk
+	 * @return Spellu\Dsl\Thunk
 	 */
-	public function evaluate()
+	protected function evaluate()
 	{
-		return call_user_func_array($this->callable, array_merge([$this->funcuit], $this->bindedThunks));
+		return thunk(call_user_func_array($this->callable,
+			array_merge([$this->funcuit], $this->arguments())
+		));
 	}
 
 	/**
-	 * @return Thunk
+	 * @return array(Spellu\Dsl\Thunk)
 	 */
-	public function __invoke()
+	protected function arguments()
 	{
-		return $this->evaluate();
-	}
-
-	/**
-	 * @param string $method
-	 * @param array $args
-	 * @return Spellu\Dsl\Expression
-	 */
-	public function __call($method, $arguments)
-	{
-		$expression = $this->funcuit->expressionA($method, $arguments);
-		return new ExpressionBind($this->funcuit, [$this, $expression]);
+		return $this->bindedThunks;
 	}
 }
 
-abstract class Combination implements Expression
+abstract class ExpressionUnary extends Expression
+{
+	/**
+	 * @param Spellu\Dsl\Funcuit $funcuit
+	 * @param Spellu\Dsl\Evaluable $expression
+	 */
+	public function __construct(Funcuit $funcuit, Evaluable $expression)
+	{
+		parent::__construct($funcuit);
+		$this->expression = $expression;
+	}
+}
+
+class ExpressionRepeat extends ExpressionUnary
+{
+	/**
+	 * @return Spellu\Dsl\Thunk
+	 */
+	public function evaluate()
+	{
+		$returnValues = [];
+
+		while (true) {
+			$result = thunk(thunk($this->expression)->evaluate());
+			if ($result->isFailure()) break;	// failureならループを抜ける
+			$returnValues[] = $result->value();
+		}
+
+		// TODO many1() などに対応
+//var_dump('count', count($returnValue));
+//		if (count($returnValue) == 0) return Thunk::fail();
+
+		return thunk($returnValues);
+	}
+}
+
+abstract class Combination extends Expression
 {
 	/**
 	 * @param Funcuit $funcuit
-	 * @param array(Spellu\Dsl\Expression) $expressions
+	 * @param array(Spellu\Dsl\Evaluable) $expressions
 	 */
-	public function __construct(Funcuit $funcuit, array $expressions, array $arguments = null)
+	public function __construct(Funcuit $funcuit, array $expressions)
 	{
-		$this->funcuit = $funcuit;
+		parent::__construct($funcuit);
 		$this->expressions = $expressions;
-		$this->arguments = $arguments;
 	}
 
 	/**
-	 * @return Thunk
-	 */
-	public function __invoke()
-	{
-		return $this->evaluate();
-	}
-
-	/**
-	 * @param string $method
+	 * @param string $name
 	 * @param array $args
-	 * @return Spellu\Dsl\Expression
+	 * @return Spellu\Dsl\Evaluable
 	 */
-	public function __call($method, $arguments)
+	public function bind($name, $arguments)
 	{
-		$expression = $this->funcuit->expressionA($method, $arguments);
+		$expression = $this->funcuit->expressionA($name, $arguments);
 		return new static($this->funcuit, array_merge($this->expressions, [$expression]));
-	}
-}
-
-/**
- * bind(fa, fb, ..., fn) => fa(); fb(); ...; return fn()
- */
-class ExpressionBind extends Combination
-{
-	/**
-	 * @return Thunk
-	 */
-	public function evaluate()
-	{
-		$result = Thunk::nothing();
-
-		$thunks = map($this->expressions, function ($v) { return thunk($v); });
-
-		foreach ($thunks as $thunk) {
-			$result = thunk(toValue($thunk));
-			if ($result->isFailure()) return $result;
-		}
-
-		return $result;
 	}
 }
 
@@ -127,17 +253,26 @@ class ExpressionBind extends Combination
 class ExpressionCombine extends Combination
 {
 	/**
-	 * @return Thunk
+	 * TODO: 動的パラメーター
 	 */
-	public function evaluate()
+	public function argument($argument)
+	{
+		$this->argument = $argument;
+		return $this;
+	}
+
+	/**
+	 * @return Spellu\Dsl\Thunk
+	 */
+	protected function evaluate()
 	{
 		$thunks = map($this->expressions, function ($v) { return thunk($v); });
 
-		$result = thunk(toValue($this->arguments[0]));
+		$result = thunk($this->argument->evaluate());
 
 		foreach ($thunks as $thunk) {
-			$value = $arg($this, $value);
-			if ($value->isFailure()) return $value;
+			$result = $arg($this, $result);
+			if ($result->isFailure()) break;
 		}
 
 		return $result;
@@ -150,22 +285,58 @@ class ExpressionCombine extends Combination
 class ExpressionConcat extends Combination
 {
 	/**
-	 * @return Thunk
+	 * @return Spellu\Dsl\Thunk
 	 */
-	public function evaluate()
+	protected function evaluate()
 	{
 		$returnValues = [];
 
-		$thunks = map($this->expressions, function ($v) { return thunk($v); });
+		$expressions = map($this->expressions, function ($v) { return thunk($v); });
 
-		foreach ($thunks as $thunk) {
-			$result = thunk(toValue($thunk));
+		foreach ($expressions as $expression) {
+			$result = thunk($expression->evaluate());
 			if ($result->isFailure()) return $result;
-
-			$returnValues[] = $result;
+			$returnValues[] = $result->value();
 		}
 
-		return $returnValues;
+		return thunk($returnValues);
+	}
+}
+
+/**
+ * choice(n)(fa, fb, ..., fn) => return [fa(), fb(), ..., fn()][n]
+ */
+class ExpressionChoice extends Combination
+{
+	protected $offset = -1;
+
+	/**
+	 * @return Spellu\Dsl\Thunk
+	 */
+	protected function evaluate()
+	{
+		$result = Thunk::fail();
+
+		$expressions = map($this->expressions, function ($v) { return thunk($v); });
+
+		$index = 0;
+		foreach ($expressions as $expression) {
+			$result = thunk($expression->evaluate());
+			if ($result->isFailure()) break;
+			if ($index == $this->offset) break;
+		}
+
+		return $result;
+	}
+
+	/**
+	 * @param int $offset
+	 * @return Spellu\Dsl\Combination
+	 */
+	public function offset($offset)
+	{
+		$this->offset = $offset;
+		return $this;
 	}
 }
 
@@ -175,19 +346,19 @@ class ExpressionConcat extends Combination
 class ExpressionOr extends Combination
 {
 	/**
-	 * @return Thunk
+	 * @return Spellu\Dsl\Thunk
 	 */
-	public function evaluate()
+	protected function evaluate()
 	{
-		$state = $this->funcuit->__funcuit_save();
-		$result = Thunk::nothing();
+		$state = $this->funcuit->__runnable_save();
+		$result = Thunk::fail();
 
 		$thunks = map($this->expressions, function ($v) { return thunk($v); });
 
 		foreach ($thunks as $thunk) {
-			$result = thunk(toValue($tunk));
-			if (! $value->isFailure()) return $result;
-			$this->funcuit->funcuit_restore($state);
+			$result = thunk($thunk->evaluate());
+			if (! $result->isFailure()) break;
+			$this->funcuit->__runnable_restore($state);
 		}
 
 		return $result;

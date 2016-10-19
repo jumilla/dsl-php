@@ -2,6 +2,8 @@
 
 namespace Spellu\Dsl;
 
+// data Maybe a  =  Nothing | Just a deriving (Eq, Ord, Read, Show)
+
 interface Maybe extends Failable
 {
 }

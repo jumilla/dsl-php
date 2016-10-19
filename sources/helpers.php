@@ -5,19 +5,8 @@ namespace Spellu\Dsl;
 function thunk($value)
 {
 	if ($value instanceof Thunk) return $value;
-	if ($value === null) return Thunk::nothing();
+	if ($value === null) return Thunk::fail();
 	return new Thunk($value);
-}
-
-/**
- * thunkを評価し、値に還元する。
- */
-function toValue(Thunk &$thunk)
-{
-	while ($thunk->isExpression()) {
-		$thunk->evaluate();
-	}
-	return $thunk->value();
 }
 
 function wrap($function, ...$values)
@@ -37,4 +26,21 @@ function map($array, $function)
 		$result[] = $function($value);
 	}
 	return $result;
+}
+
+function reduce($array, $function, $initialValue)
+{
+	return array_reduce($array, $function, $initialValue);
+}
+
+function dump($v)
+{
+	if (is_array($v)) {
+		return '[' . implode(', ', map($v, function ($v) {
+			return dump($v);
+		})) . ']';
+	}
+	else {
+		return (string)$v;
+	}
 }

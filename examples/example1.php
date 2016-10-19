@@ -11,25 +11,26 @@ use function Spellu\Dsl\toValue;
 $state = new State();
 
 $state->define('test1', '', function (State $self, $value) {
-	return toValue($value) + 1;
+	return $value->evaluate() + 1;
 });
 
 $state->define('add', '', function (State $self, $value) {
-	$self->value += toValue($value);
+	$self->value += $value->evaluate();
 	return Thunk::void();
 });
 
 $state->define('test2', '', function (State $self, $value) {
-	return $self->op->bind(
+	return $self->op->and(
 		$self->add($value),
 		$self->test1($self->get())
 	);
 });
 
 $state->define('test3', '', function (State $self, $value) {
-	return $self->add($value)->add($value)->test1($self->get());
+	return $self->add($value)->add($value)->test1($self->get())->reduceR();
 });
 
 
-echo $state->run($state->test2(3), 134), PHP_EOL;
-echo $state->run($state->test3(5), 134), PHP_EOL;
+echo '[1] ', $state->runState($state->test1(3), 134), PHP_EOL;
+echo '[2] ', $state->runState($state->test2(3), 134), PHP_EOL;
+echo '[3] ', $state->runState($state->test3(5), 134), PHP_EOL;

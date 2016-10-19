@@ -4,9 +4,19 @@ namespace Spellu\Dsl;
 
 class Thunk
 {
+	/**
+	 * @var Spellu\Dsl\Thunk
+	 */
 	private static $void;
-	private static $nothing;
 
+	/**
+	 * @var Spellu\Dsl\Thunk
+	 */
+	private static $fail;
+
+	/**
+	 * @return Spellu\Dsl\Thunk
+	 */
 	public static function void()
 	{
 		if (self::$void === null) {
@@ -15,31 +25,49 @@ class Thunk
 		return self::$void;
 	}
 
-	public static function nothing()
+	/**
+	 * @return Spellu\Dsl\Thunk
+	 */
+	public static function fail()
 	{
-		if (self::$nothing === null) {
-			self::$nothing = new static(null);
+		if (self::$fail === null) {
+			self::$fail = new static(null);
 		}
-		return self::$nothing;
+		return self::$fail;
 	}
 
+	/**
+	 * @var Spellu\Dsl\Expression | mixed
+	 */
 	protected $data;	// expr or value
 
+	/**
+	 * @param mixed
+	 */
 	public function __construct($data)
 	{
 		$this->data = $data;
 	}
 
+	/**
+	 * @return bool
+	 */
 	public function isExpression()
 	{
 		return $this->data instanceof Expression;
 	}
 
+	/**
+	 * @return bool
+	 */
 	public function isValue()
 	{
 		return !($this->data instanceof Expression);
 	}
 
+	/**
+	 * @return bool
+	 */
 	public function isFailure()
 	{
 		if ($this->isExpression()) return null; // or 例外送出
@@ -48,20 +76,57 @@ class Thunk
 			($this->data instanceof Failable && $this->data->isFailure());
 	}
 
-	public function evaluate()
+	/**
+	 * @return mixed
+	 */
+	function evaluate()
 	{
-		if ($this->isExpression()) {
-			$this->data = $this->data->evaluate();
+		while ($this->isExpression()) {
+			$result = ($this->data)();
+			$this->data = $result->data;
 		}
-
 		return $this->data;
 	}
 
+	/**
+	 * @return Spellu\Dsl\Expression
+	 */
+	public function expression()
+	{
+		return $this->isExpression() ? $this->data : null;
+	}
+
+	/**
+	 * @return mixed
+	 */
 	public function value()
 	{
-		if ($this->isExpression())
-			return null; // or 例外送出
-		else
-			return $this->data;
+		return $this->isExpression() ? null : $this->data;
+	}
+
+	/**
+	 * @return string
+	 */
+	public function __toString()
+	{
+		if ($this->data === null) {
+			return 'Nothing';
+		}
+		else if ($this->data === []) {
+			return 'Void';
+		}
+		else if ($this->isExpression()) {
+			return "Expression()". get_class($this->data);
+		}
+		else if (is_array($this->data)) {
+			$v = array_reduce($this->data, function ($string, $element) {
+				return $string . print_r($this->data, true);
+			}, '[') . ']';
+			return "Value({$v})";
+		}
+		else {
+			return "Value({$this->data})";
+		}
+
 	}
 }
