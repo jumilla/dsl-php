@@ -1,0 +1,30 @@
+{
+    "name": "spellu/dsl",
+    "type": "language",
+    "description": "DSL Kit for PHP.",
+    "license": "MIT",
+    "keywords": ["dsl", "php"],
+    "homepage": "https://jumilla.me",
+    "authors": [
+        {
+            "name": "Fumio Furukawa",
+            "email": "fumio@jumilla.me"
+        }
+    ],
+    "require": {
+        "php": "^7.0"
+    },
+    "require-dev": {
+        "phpunit/phpunit": "~5.0",
+        "mockery/mockery": "~0.9"
+    },
+    "autoload": {
+        "classmap": [
+            "sources/"
+        ],
+        "files": [
+            "sources/helpers.php"
+        ]
+    },
+    "minimum-stability": "stable"
+}
