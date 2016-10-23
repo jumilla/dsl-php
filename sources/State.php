@@ -7,6 +7,10 @@ class State extends Funcuit
 	use ActionPool;
 	use ExpressionPool;
 
+	public $op;
+
+	public $value;
+
 	public function __construct()
 	{
 		$this->op = new Control($this);
