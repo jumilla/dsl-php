@@ -2,28 +2,6 @@
 
 namespace Spellu\Dsl;
 
-interface Evaluable
-{
-	/**
-	 * @param string $name
-	 * @param array $args
-	 * @return Spellu\Dsl\Evaluable
-	 */
-	public function bind($name, $arguments);
-
-	/**
-	 * @param callable $reducer
-	 * @return Spellu\Dsl\Evaluable
-	 */
-	public function reduce(callable $reducer);
-
-	/**
-	 * @return Spellu\Dsl\Thunk
-	 */
-	public function __invoke();
-
-}
-
 abstract class Expression implements Evaluable
 {
 	/**
@@ -51,7 +29,7 @@ abstract class Expression implements Evaluable
 	 */
 	public function bind($name, $arguments)
 	{
-		$expression = $this->funcuit->expressionA($name, $arguments);
+		$expression = $this->funcuit->actionPool()->_expression($name, $arguments);
 		return new ExpressionConcat($this->funcuit, [$this, $expression]);
 	}
 
@@ -241,7 +219,7 @@ abstract class Combination extends Expression
 	 */
 	public function bind($name, $arguments)
 	{
-		$expression = $this->funcuit->expressionA($name, $arguments);
+		$expression = $this->funcuit->actionPool()->_expression($name, $arguments);
 		return new static($this->funcuit, array_merge($this->expressions, [$expression]));
 	}
 }
@@ -350,7 +328,7 @@ class ExpressionOr extends Combination
 	 */
 	protected function evaluate()
 	{
-		$state = $this->funcuit->__runnable_save();
+		$state = $this->funcuit->saveState();
 		$result = Thunk::fail();
 
 		$thunks = map($this->expressions, function ($v) { return thunk($v); });
@@ -358,14 +336,9 @@ class ExpressionOr extends Combination
 		foreach ($thunks as $thunk) {
 			$result = thunk($thunk->evaluate());
 			if (! $result->isFailure()) break;
-			$this->funcuit->__runnable_restore($state);
+			$this->funcuit->restoreState($state);
 		}
 
 		return $result;
 	}
-}
-
-trait ExpressionPool
-{
-
 }

@@ -3,27 +3,29 @@
 namespace Spellu\Dsl\Example;
 
 use Spellu\Dsl\Funcuit;
-use Spellu\Dsl\ActionPool;
-use Spellu\Dsl\Control;
+use Spellu\Dsl\Thunk;
+use function Spellu\Dsl\thunk;
 
 class HtmlParser extends Funcuit
 {
-	use ActionPool;
-
 	protected $tokenizer;
 
 	public function __construct()
 	{
-		$this->op = new Control($this);
-
 		$this->setupActions();
-	}
-
-	protected function setupActions()
-	{
 	}
 
 	public function runParse($string)
 	{
+		$this->stream = new CharacterReader($string);
+
+		return thunk($this->ac->root())->evaluate();
+	}
+
+	protected function setupActions()
+	{
+		$this->define('root', 'void -> void', function (HtmlParser $self) {
+			return Thunk::fail();
+		});
 	}
 }

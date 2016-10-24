@@ -4,17 +4,10 @@ namespace Spellu\Dsl;
 
 class State extends Funcuit
 {
-	use ActionPool;
-	use ExpressionPool;
-
-	public $op;
-
 	public $value;
 
 	public function __construct()
 	{
-		$this->op = new Control($this);
-
 		$this->define('get', '() -> Any', function (State $state) {
 			return $state->value;
 		});
@@ -31,15 +24,27 @@ class State extends Funcuit
 		});
 	}
 
-	public function __call($method, $args)
-	{
-		return $this->expressionA($method, $args);
-	}
-
 	public function runState(Expression $expression, $initialValue)
 	{
 		$this->value = $initialValue;
 
 		return $this->evaluate(thunk($expression));
+	}
+
+	/**
+	 * @return mixed
+	 */
+	public function saveState()
+	{
+		return $this->value;
+	}
+
+	/**
+	 * @param mixed $state
+	 * @return void
+	 */
+	public function restoreState($state)
+	{
+		$this->value = $state;
 	}
 }

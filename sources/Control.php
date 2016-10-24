@@ -121,3 +121,22 @@ class Control
 		}, [$arguments]);
 	}
 }
+
+trait ControlBox
+{
+	protected $control;
+
+	public function control()
+	{
+		if ($this->control === null) {
+			$this->control = $this->makeControl();
+		}
+
+		return $this->control;
+	}
+
+	protected function makeControl()
+	{
+		return new Control($this);
+	}
+}

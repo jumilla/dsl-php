@@ -3,11 +3,7 @@
 namespace Spellu\Dsl\Example;
 
 use Spellu\Dsl\Funcuit;
-use Spellu\Dsl\ActionPool;
-use Spellu\Dsl\Control;
 use function Spellu\Dsl\thunk;
-
-
 
 /**
  * EBNF
@@ -18,28 +14,46 @@ use function Spellu\Dsl\thunk;
  */
 class Calcurator extends Funcuit
 {
-	use ActionPool;
-
 	protected $stream;
 
 	public $direct;
 
 	public function __construct()
 	{
-		$this->op = new Control($this);
-
 		$this->setupActions();
 	}
+
+//--- for external --//
+
+	public function runTwoMode($string)
+	{
+		return [
+			'direct' => $this->runCalcurator($string, true),
+			'late' => $this->runCalcurator($string, false)
+		];
+	}
+
+	public function runCalcurator($string, $direct)
+	{
+		$this->stream = new CharacterReader($string);
+		$this->direct = $direct;
+
+		$result = thunk($this->ac->expr())->evaluate();
+
+		return $direct ? $result : $this->calcLater($result);
+	}
+
+//-- for internal --//
 
 	protected function setupActions()
 	{
 		$this->define('expr', '', function (Calcurator $self) {
 			return $self->op->concat(
-				$self->term(),
+				$self->ac->term(),
 				$self->op->many(
 					$self->op->or(
-						$self->char('+')->term(),
-						$self->char('-')->term()
+						$self->ac->char('+')->term(),
+						$self->ac->char('-')->term()
 					)
 				)
 			)->reduceExpression();
@@ -47,11 +61,11 @@ class Calcurator extends Funcuit
 
 		$this->define('term', '', function (Calcurator $self) {
 			return $self->op->concat(
-				$self->factor(),
+				$self->ac->factor(),
 				$self->op->many(
 					$self->op->or(
-						$self->char('*')->factor(),
-						$self->char('/')->factor()
+						$self->ac->char('*')->factor(),
+						$self->ac->char('/')->factor()
 					)
 				)
 			)->reduceExpression();
@@ -59,8 +73,8 @@ class Calcurator extends Funcuit
 
 		$this->define('factor', '', function (Calcurator $self) {
 			return $self->op->or(
-				$self->number(),
-				$self->char('(')->expr()->char(')')->reduce(function (array $result) {
+				$self->ac->number(),
+				$self->ac->char('(')->expr()->char(')')->reduce(function (array $result) {
 					assert(count($result) == 3);
 					return $result[1];
 				})
@@ -83,29 +97,6 @@ class Calcurator extends Funcuit
 			}
 			return null;
 		});
-	}
-
-	public function __call($method, $args)
-	{
-		return $this->expressionA($method, $args);
-	}
-
-	public function runTwoMode($string)
-	{
-		return [
-			'direct' => $this->runCalcurator($string, true),
-			'late' => $this->runCalcurator($string, false)
-		];
-	}
-
-	public function runCalcurator($string, $direct)
-	{
-		$this->stream = new CharacterReader($string);
-		$this->direct = $direct;
-
-		$result = thunk($this->expr())->evaluate();
-
-		return $direct ? $result : $this->calcLater($result);
 	}
 
 	public function getChar()
@@ -208,13 +199,13 @@ class Calcurator extends Funcuit
 
 	}
 
-	public function __runnable_save()
+	public function saveState()
 	{
 		return $this->stream->saveState();
 	}
 
-	public function __runnable_restoreState($state)
+	public function restoreState($state)
 	{
-		$this->stream->restore($state);
+		$this->stream->restorestate($state);
 	}
 }
