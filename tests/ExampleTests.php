@@ -1,5 +1,6 @@
 <?php
 
+use Spellu\Dsl\Testing\TestCase;
 use Spellu\Dsl\State;
 
 class ExampleTests extends TestCase

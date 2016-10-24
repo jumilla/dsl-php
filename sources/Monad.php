@@ -2,6 +2,20 @@
 
 namespace Spellu\Dsl;
 
+interface Restorable
+{
+	/**
+	 * @return mixed
+	 */
+	public function saveState();
+
+	/**
+	 * @param mixed $state
+	 * @return void
+	 */
+	public function restoreState($state);
+}
+
 interface Runnable
 {
 	/**

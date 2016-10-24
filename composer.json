@@ -28,7 +28,8 @@
     },
     "autoload-dev": {
         "psr-4": {
-            "": "tests"
+            "Spellu\\Dsl\\Testing\\": "tests/classes",
+            "Spellu\\Dsl\\Example\\": "examples/classes"
         }
     },
     "minimum-stability": "stable"
