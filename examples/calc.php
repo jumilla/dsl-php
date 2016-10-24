@@ -14,3 +14,4 @@ echo '[1] ', dump($calcurator->runTwoMode('1+2+3')), PHP_EOL;
 echo '[2] ', dump($calcurator->runTwoMode('1*2+3')), PHP_EOL;
 echo '[3] ', dump($calcurator->runTwoMode('1+2*3')), PHP_EOL;
 echo '[4] ', dump($calcurator->runTwoMode('(1+2)*3')), PHP_EOL;
+echo '[5] ', dump($calcurator->runTwoMode('(1+a)*3')), PHP_EOL;

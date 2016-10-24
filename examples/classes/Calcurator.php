@@ -40,6 +40,10 @@ class Calcurator extends Funcuit
 
 		$result = thunk($this->ac->expr())->evaluate();
 
+		if ($result === null) {
+			return null;
+		}
+
 		return $direct ? $result : $this->calcLater($result);
 	}
 
