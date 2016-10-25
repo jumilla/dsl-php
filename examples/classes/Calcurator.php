@@ -3,6 +3,9 @@
 namespace Spellu\Dsl\Example;
 
 use Spellu\Dsl\Funcuit;
+use Spellu\Dsl\Either;
+use Spellu\Dsl\Success;
+use Spellu\Dsl\Failure;
 use function Spellu\Dsl\thunk;
 
 /**
@@ -40,11 +43,11 @@ class Calcurator extends Funcuit
 
 		$result = thunk($this->ac->expr())->evaluate();
 
-		if ($result === null) {
-			return null;
+		if ($result instanceof Either) {
+			return $result;
 		}
 
-		return $direct ? $result : $this->calcLater($result);
+		return new Success($direct ? $result : $this->calcLater($result));
 	}
 
 //-- for internal --//
@@ -87,19 +90,30 @@ class Calcurator extends Funcuit
 
 		$this->define('number', '', function (Calcurator $self) {
 			$result = '';
+			if ($char = $self->getDigit()) {
+				$result .= $char->char;
+			}
+			else {
+				return null;
+			}
+
 			while (true) {
 				$char = $self->getDigit();
-				if ($char === null) break;
-				$result .= $char;
+				if ($char === null) {
+					return new Failure(new CalcuratorException($self->stream->read(), 'not a number'));
+				}
+				$result .= $char->char;
 			}
-			return $result ?: null;
+			$a = 9a;
+			return $result;
 		});
 
 		$this->define('char', '', function (Calcurator $self, $char) {
-			if ($char = $self->getCharIf($char->evaluate())) {
-				return $char;
+			$char = $char->evaluate();
+			if ($result = $self->getCharIf($char)) {
+				return $result;
 			}
-			return null;
+			return new Failure(new CalcuratorException($self->stream->read(), "Expected '{$char}'"));
 		});
 	}
 
@@ -110,10 +124,17 @@ class Calcurator extends Funcuit
 
 	public function getCharIf($char)
 	{
-		$next = $this->stream->peek();
-		if ($next == $char) {
-			$this->stream->read();
-			return $next;
+		if ($this->stream->peek() == $char) {
+			return $this->stream->read();
+		}
+		else
+			return null;
+	}
+
+	public function getSpace()
+	{
+		if (preg_match('/[ \\t\\r\\n]/', $this->stream->peek())) {
+			return $this->stream->read();
 		}
 		else
 			return null;
@@ -121,10 +142,8 @@ class Calcurator extends Funcuit
 
 	public function getDigit()
 	{
-		$next = $this->stream->peek();
-		if (preg_match('/[0-9]/', $next)) {
-			$this->stream->read();
-			return $next;
+		if (preg_match('/[0-9]/', $this->stream->peek())) {
+			return $this->stream->read();
 		}
 		else
 			return null;
@@ -149,7 +168,7 @@ class Calcurator extends Funcuit
 		$left = (int)$expr[0];
 		foreach ($expr[1] as $postfix) {
 			list($sign, $right) = $postfix;
-			switch ($sign) {
+			switch ($sign->char) {
 				case '+':
 					 $left += (int)$right;
 					 break;
@@ -162,6 +181,8 @@ class Calcurator extends Funcuit
 				case '/':
 					 $left /= (int)$right;
 					 break;
+				default:
+
 			}
 		}
 		return $left;
@@ -184,7 +205,7 @@ class Calcurator extends Funcuit
 		$left = $this->calc($expr[0]);
 		foreach (array_slice($expr, 1) as $postfix) {
 			list($sign, $right) = $postfix;
-			switch ($sign) {
+			switch ($sign->char) {
 				case '+':
 					 $left += $this->calc($right);
 					 break;
