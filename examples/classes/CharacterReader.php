@@ -37,7 +37,13 @@ class CharacterReader implements Restorable
 		$char = $this->string[$this->offset];
 
 		$this->offset += 1;
-		$this->column += 1;
+		if ($char == "\n") {
+			$this->line += 1;
+			$this->column = 1;
+		}
+		else {
+			$this->column += 1;
+		}
 
 		return (object)[
 			'char' => $char,

@@ -80,32 +80,19 @@ class Calcurator extends Funcuit
 
 		$this->define('factor', '', function (Calcurator $self) {
 			return $self->op->or(
-				$self->ac->number(),
 				$self->ac->char('(')->expr()->char(')')->reduce(function (array $result) {
 					assert(count($result) == 3);
+					if ($result[1] === null) {
+echo '!!!';die;
+					}
 					return $result[1];
-				})
+				}),
+				$self->ac->number()
 			);
 		});
 
 		$this->define('number', '', function (Calcurator $self) {
-			$result = '';
-			if ($char = $self->getDigit()) {
-				$result .= $char->char;
-			}
-			else {
-				return null;
-			}
-
-			while (true) {
-				$char = $self->getDigit();
-				if ($char === null) {
-					return new Failure(new CalcuratorException($self->stream->read(), 'not a number'));
-				}
-				$result .= $char->char;
-			}
-			$a = 9a;
-			return $result;
+			return $self->getNumber();
 		});
 
 		$this->define('char', '', function (Calcurator $self, $char) {
@@ -131,22 +118,33 @@ class Calcurator extends Funcuit
 			return null;
 	}
 
-	public function getSpace()
+	public function skipSpace()
 	{
-		if (preg_match('/[ \\t\\r\\n]/', $this->stream->peek())) {
-			return $this->stream->read();
+		while (preg_match('/ \\t\\r\\n/', $this->stream->peek())) {
+			$this->stream->read();
 		}
-		else
-			return null;
 	}
 
-	public function getDigit()
+	public function getNumber()
 	{
-		if (preg_match('/[0-9]/', $this->stream->peek())) {
-			return $this->stream->read();
-		}
-		else
+		if (! preg_match('/[0-9]/', $this->stream->peek())) {
 			return null;
+		}
+		$result = $this->stream->read();
+		$number = $result->char;
+
+		while (true) {
+			$char = $this->stream->peek();
+			if (preg_match('/[0-9]/', $char)) {
+				$number .= $char;
+			}
+			else if (preg_match('/[a-zA-Z]/', $char)) {
+				return new Failure(new CalcuratorException($this->stream->read(), 'Expected digit.'));
+			}
+			else {
+				return $number;
+			}
+		}
 	}
 
 	public function reduceExpression($expression)
@@ -201,6 +199,10 @@ class Calcurator extends Funcuit
 		}
 
 		assert(is_array($expr));
+if (!is_array($expr)) {
+	var_dump($expr);
+	die;
+}
 
 		$left = $this->calc($expr[0]);
 		foreach (array_slice($expr, 1) as $postfix) {

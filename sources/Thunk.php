@@ -84,6 +84,7 @@ class Thunk
 		while ($this->isExpression()) {
 			$result = ($this->data)();
 			$this->data = $result->data;
+			if ($this->isFailure()) break;
 		}
 		return $this->data;
 	}
@@ -114,6 +115,9 @@ class Thunk
 		}
 		else if ($this->data === []) {
 			return 'Void';
+		}
+		else if ($this->data instanceof Failable) {
+			return "Failable()". get_class($this->data);
 		}
 		else if ($this->isExpression()) {
 			return "Expression()". get_class($this->data);
