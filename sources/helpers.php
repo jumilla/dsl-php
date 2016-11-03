@@ -35,10 +35,16 @@ function reduce($array, $function, $initialValue)
 
 function dump($v)
 {
-	if (is_array($v)) {
+	if ($v === null) {
+		return 'NULL';
+	}
+	else if (is_array($v)) {
 		return '[' . implode(', ', map($v, function ($v) {
 			return dump($v);
 		})) . ']';
+	}
+	else if (is_object($v) && !method_exists($v, '__toString')) {
+		return 'Object('. get_class($v) .')';
 	}
 	else {
 		return (string)$v;

@@ -128,6 +128,12 @@ class Thunk
 			}, '[') . ']';
 			return "Value({$v})";
 		}
+		else if (is_object($this->data) && !method_exists($this->data, '__toString')) {
+			return 'Object(.*.)';
+		}
+		else if (is_string($this->data)) {
+			return "Value('{$this->data}')";
+		}
 		else {
 			return "Value({$this->data})";
 		}

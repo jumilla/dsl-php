@@ -100,15 +100,21 @@ abstract class Expression implements Evaluable
 	 */
 	public function __invoke()
 	{
+//echo 'expr: ', $this, PHP_EOL;
+
 		$result = $this->evaluate();
 
 		if (!$result->isFailure() && $this->reducers) {
 			$value = $result->value();
 			foreach ($this->reducers as $reducer) {
+				$oldValue = $value;
 				$value = $reducer($value);
+//echo 'reduce: ', dump($oldValue), '->', dump($value), PHP_EOL;
 			}
 			$result = thunk($value);
 		}
+
+//echo 'result: ', dump($result->value()), PHP_EOL;
 
 		return $result;
 	}
@@ -121,9 +127,17 @@ abstract class Expression implements Evaluable
 	/**
 	 * @return string
 	 */
+	public function name()
+	{
+		return substr(get_class($this), strlen('Spellu\Dsl\Expression'));
+	}
+
+	/**
+	 * @return string
+	 */
 	public function __toString()
 	{
-		return get_class($this);
+		return $this->name();
 	}
 }
 
@@ -162,10 +176,31 @@ class ExpressionCall extends Expression
 	{
 		return $this->bindedThunks;
 	}
+
+	/**
+	 * @return string
+	 */
+	public function name()
+	{
+		return $this->callable instanceof Action ? $this->callable->name() : '#func#';
+	}
+
+	/**
+	 * @return string
+	 */
+	public function __toString()
+	{
+		return $this->name().'('.dump($this->bindedThunks).')';
+	}
 }
 
 abstract class ExpressionUnary extends Expression
 {
+	/**
+	 * @var Spellu\Dsl\Evaluable
+	 */
+	protected $expression;
+
 	/**
 	 * @param Spellu\Dsl\Funcuit $funcuit
 	 * @param Spellu\Dsl\Evaluable $expression
@@ -174,6 +209,14 @@ abstract class ExpressionUnary extends Expression
 	{
 		parent::__construct($funcuit);
 		$this->expression = $expression;
+	}
+
+	/**
+	 * @return string
+	 */
+	public function __toString()
+	{
+		return $this->name().'('.(string)$this->expression.')';
 	}
 }
 
@@ -203,6 +246,11 @@ class ExpressionRepeat extends ExpressionUnary
 abstract class Combination extends Expression
 {
 	/**
+	 * @var array(Spellu\Dsl\Evaluable)
+	 */
+	protected $expressions;
+
+	/**
 	 * @param Funcuit $funcuit
 	 * @param array(Spellu\Dsl\Evaluable) $expressions
 	 */
@@ -221,6 +269,14 @@ abstract class Combination extends Expression
 	{
 		$expression = $this->funcuit->actionPool()->_expression($name, $arguments);
 		return new static($this->funcuit, array_merge($this->expressions, [$expression]));
+	}
+
+	/**
+	 * @return string
+	 */
+	public function __toString()
+	{
+		return $this->name().'('.dump($this->expressions).')';
 	}
 }
 

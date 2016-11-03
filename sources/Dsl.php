@@ -29,6 +29,16 @@ class Action
 		return $ref->getNumberOfParameters() - 1;
 	}
 
+	public function name()
+	{
+		return $this->name;
+	}
+
+	public function type()
+	{
+		return $this->type;
+	}
+
 	public function __invoke(...$args)
 	{
 		return call_user_func_array($this->function, $args);
@@ -62,7 +72,6 @@ interface Evaluable
 	 * @return Spellu\Dsl\Thunk
 	 */
 	public function __invoke();
-
 }
 
 interface Restorable

@@ -41,7 +41,12 @@ class Calcurator extends Funcuit
 		$this->stream = new CharacterReader($string);
 		$this->direct = $direct;
 
-		$result = thunk($this->ac->expr())->evaluate();
+		try {
+			$result = thunk($this->ac->expr())->evaluate();
+		}
+		catch (CalcuratorException $ex) {
+			return new Failure($ex);
+		}
 
 		if ($result instanceof Either) {
 			return $result;
@@ -82,9 +87,6 @@ class Calcurator extends Funcuit
 			return $self->op->or(
 				$self->ac->char('(')->expr()->char(')')->reduce(function (array $result) {
 					assert(count($result) == 3);
-					if ($result[1] === null) {
-echo '!!!';die;
-					}
 					return $result[1];
 				}),
 				$self->ac->number()
@@ -92,7 +94,12 @@ echo '!!!';die;
 		});
 
 		$this->define('number', '', function (Calcurator $self) {
-			return $self->getNumber();
+//			try {
+				return $self->getNumber();
+//			}
+//			catch (CalcuratorException $ex) {
+//				return new Failure($ex);
+//			}
 		});
 
 		$this->define('char', '', function (Calcurator $self, $char) {
@@ -125,10 +132,13 @@ echo '!!!';die;
 		}
 	}
 
+	/**
+	 * 1字目が
+	 */
 	public function getNumber()
 	{
 		if (! preg_match('/[0-9]/', $this->stream->peek())) {
-			return null;
+			throw new CalcuratorException($this->stream->read(), 'Expected digit.');
 		}
 		$result = $this->stream->read();
 		$number = $result->char;
@@ -139,7 +149,7 @@ echo '!!!';die;
 				$number .= $char;
 			}
 			else if (preg_match('/[a-zA-Z]/', $char)) {
-				return new Failure(new CalcuratorException($this->stream->read(), 'Expected digit.'));
+				throw new CalcuratorException($this->stream->read(), 'Expected digit.2');
 			}
 			else {
 				return $number;
@@ -199,10 +209,6 @@ echo '!!!';die;
 		}
 
 		assert(is_array($expr));
-if (!is_array($expr)) {
-	var_dump($expr);
-	die;
-}
 
 		$left = $this->calc($expr[0]);
 		foreach (array_slice($expr, 1) as $postfix) {
