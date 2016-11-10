@@ -14,6 +14,9 @@ class CalcuratorException extends DslException
 
 	public function __toString()
 	{
-		return "({$this->char->line}:{$this->char->column}) {$this->getMessage()}";
+		if ($this->char)
+			return "({$this->char->line}:{$this->char->column}) {$this->getMessage()}";
+		else
+			return "(EOS) {$this->getMessage()}";
 	}
 }

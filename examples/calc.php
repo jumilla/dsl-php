@@ -41,5 +41,6 @@ echo '[1] ', calc('1+2+3'), PHP_EOL;
 echo '[2] ', calc('1*2+3'), PHP_EOL;
 echo '[3] ', calc('1+2*3'), PHP_EOL;
 echo '[4] ', calc('(1+2)*3'), PHP_EOL;
-echo '[5] ', calc('1a+2'), PHP_EOL;
-echo '[6] ', calc('(1+9a)*3'), PHP_EOL;
+echo '[5] ', calc('1+2+3!'), PHP_EOL;
+echo '[6] ', calc('1a+2'), PHP_EOL;
+echo '[7] ', calc('(1+9a)*3'), PHP_EOL;

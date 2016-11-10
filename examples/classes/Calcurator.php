@@ -42,7 +42,7 @@ class Calcurator extends Funcuit
 		$this->direct = $direct;
 
 		try {
-			$result = thunk($this->ac->expr())->evaluate();
+			$result = thunk($this->ac->grammar())->evaluate();
 		}
 		catch (CalcuratorException $ex) {
 			return new Failure($ex);
@@ -59,6 +59,14 @@ class Calcurator extends Funcuit
 
 	protected function setupActions()
 	{
+		$this->define('grammar', '', function (Calcurator $self) {
+			return $self->ac->expr()->eos()
+				->reduce(function ($result) {
+					return $result[0];
+				}
+			);
+		});
+
 		$this->define('expr', '', function (Calcurator $self) {
 			return $self->op->concat(
 				$self->ac->term(),
@@ -109,6 +117,13 @@ class Calcurator extends Funcuit
 			}
 			return new Failure(new CalcuratorException($self->stream->read(), "Expected '{$char}'"));
 		});
+
+		$this->define('eos', '', function (Calcurator $self) {
+			if ($result = $self->isEos()) {
+				return $result;
+			}
+			return new Failure(new CalcuratorException($self->stream->read(), "Expected [EOS]"));
+		});
 	}
 
 	public function getChar()
@@ -118,11 +133,17 @@ class Calcurator extends Funcuit
 
 	public function getCharIf($char)
 	{
-		if ($this->stream->peek() == $char) {
+		if ($this->stream->peek() === $char) {
 			return $this->stream->read();
 		}
-		else
+		else {
 			return null;
+		}
+	}
+
+	public function isEos()
+	{
+		return $this->stream->peek() === null;
 	}
 
 	public function skipSpace()
@@ -138,6 +159,7 @@ class Calcurator extends Funcuit
 	public function getNumber()
 	{
 		if (! preg_match('/[0-9]/', $this->stream->peek())) {
+			// 失敗
 			throw new CalcuratorException($this->stream->read(), 'Expected digit.');
 		}
 		$result = $this->stream->read();
@@ -149,7 +171,7 @@ class Calcurator extends Funcuit
 				$number .= $char;
 			}
 			else if (preg_match('/[a-zA-Z]/', $char)) {
-				throw new CalcuratorException($this->stream->read(), 'Expected digit.2');
+				throw new CalcuratorException($this->stream->read(), 'Expected digit');
 			}
 			else {
 				return $number;
