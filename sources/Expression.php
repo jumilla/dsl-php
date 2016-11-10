@@ -12,7 +12,12 @@ abstract class Expression implements Evaluable
 	/**
 	 * @var array
 	 */
-	protected $reducers = [];
+	protected $onSuccesses = [];
+
+	/**
+	 * @var array
+	 */
+	protected $onFailures = [];
 
 	/**
 	 * @param Spellu\Dsl\Funcuit $funcuit
@@ -34,12 +39,12 @@ abstract class Expression implements Evaluable
 	}
 
 	/**
-	 * @param callable $reducer
+	 * @param callable $closure
 	 * @return Spellu\Dsl\Evaluable
 	 */
-	public function reduce(callable $reducer)
+	public function reduce(callable $closure)
 	{
-		$this->reducers[] = $reducer;
+		$this->onSuccesses[] = $closure;
 		return $this;
 	}
 
@@ -49,7 +54,7 @@ abstract class Expression implements Evaluable
 	 */
 	public function reduceN($offset)
 	{
-		$this->reducers[] = function ($result) use ($offset) {
+		$this->onSuccesses[] = function ($result) use ($offset) {
 			if (!is_array($result)) throw new DslException('reducer: reduceN: result is not array.');
 			return $result[$offset];
 		};
@@ -61,7 +66,7 @@ abstract class Expression implements Evaluable
 	 */
 	public function reduceL()
 	{
-		$this->reducers[] = function ($result) {
+		$this->onSuccesses[] = function ($result) {
 			if (!is_array($result)) throw new DslException('reducer: reduceL: result is not array.');
 			return current($result);
 		};
@@ -73,10 +78,20 @@ abstract class Expression implements Evaluable
 	 */
 	public function reduceR()
 	{
-		$this->reducers[] = function ($result) {
+		$this->onSuccesses[] = function ($result) {
 			if (!is_array($result)) throw new DslException('reducer: reduceR: result is not array.');
 			return end($result);
 		};
+		return $this;
+	}
+
+	/**
+	 * @param callable $closure
+	 * @return Spellu\Dsl\Evaluable
+	 */
+	public function onFailure(callable $closure)
+	{
+		$this->onFailures[] = $closure;
 		return $this;
 	}
 
@@ -100,18 +115,25 @@ abstract class Expression implements Evaluable
 	 */
 	public function __invoke()
 	{
-//echo 'expr: ', $this, PHP_EOL;
-
 		$result = $this->evaluate();
 
-		if (!$result->isFailure() && $this->reducers) {
-			$value = $result->value();
-			foreach ($this->reducers as $reducer) {
-				$oldValue = $value;
-				$value = $reducer($value);
-//echo 'reduce: ', dump($oldValue), '->', dump($value), PHP_EOL;
+		if ($result->isFailure()) {
+			if ($this->onFailures) {
+				$value = $result->value();
+				foreach ($this->onFailures as $closure) {
+					$value = $closure($value);
+				}
+				$result = thunk($value);
 			}
-			$result = thunk($value);
+		}
+		else {
+			if ($this->onSuccesses) {
+				$value = $result->value();
+				foreach ($this->onSuccesses as $closure) {
+					$value = $closure($value);
+				}
+				$result = thunk($value);
+			}
 		}
 
 //echo 'result: ', dump($result->value()), PHP_EOL;

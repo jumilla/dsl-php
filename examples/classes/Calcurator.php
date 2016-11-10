@@ -98,16 +98,18 @@ class Calcurator extends Funcuit
 					return $result[1];
 				}),
 				$self->ac->number()
-			);
+			)->onFailure(function ($f) use ($self) {
+				return new Failure(new CalcuratorException($self->stream->read(), "Expected number or '('"));
+			});
 		});
 
 		$this->define('number', '', function (Calcurator $self) {
-//			try {
+			try {
 				return $self->getNumber();
-//			}
-//			catch (CalcuratorException $ex) {
-//				return new Failure($ex);
-//			}
+			}
+			catch (CalcuratorException $ex) {
+				return new Failure($ex);
+			}
 		});
 
 		$this->define('char', '', function (Calcurator $self, $char) {
