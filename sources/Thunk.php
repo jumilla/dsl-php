@@ -12,7 +12,7 @@ class Thunk
 	/**
 	 * @var Spellu\Dsl\Thunk
 	 */
-	private static $fail;
+	private static $failure;
 
 	/**
 	 * @return Spellu\Dsl\Thunk
@@ -28,12 +28,12 @@ class Thunk
 	/**
 	 * @return Spellu\Dsl\Thunk
 	 */
-	public static function fail()
+	public static function failure()
 	{
-		if (self::$fail === null) {
-			self::$fail = new static(null);
+		if (self::$failure === null) {
+			self::$failure = new static(null);
 		}
-		return self::$fail;
+		return self::$failure;
 	}
 
 	/**

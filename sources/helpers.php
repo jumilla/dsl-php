@@ -5,7 +5,7 @@ namespace Spellu\Dsl;
 function thunk($value)
 {
 	if ($value instanceof Thunk) return $value;
-	if ($value === null) return Thunk::fail();
+	if ($value === null) return Thunk::failure();
 	return new Thunk($value);
 }
 

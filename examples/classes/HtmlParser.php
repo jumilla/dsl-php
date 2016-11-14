@@ -25,7 +25,7 @@ class HtmlParser extends Funcuit
 	protected function setupActions()
 	{
 		$this->define('root', 'void -> void', function (HtmlParser $self) {
-			return Thunk::fail();
+			return Thunk::failure();
 		});
 	}
 }

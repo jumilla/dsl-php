@@ -259,7 +259,7 @@ class ExpressionRepeat extends ExpressionUnary
 
 		// TODO many1() などに対応
 //var_dump('count', count($returnValue));
-//		if (count($returnValue) == 0) return Thunk::fail();
+//		if (count($returnValue) == 0) return Thunk::failure();
 
 		return thunk($returnValues);
 	}
@@ -371,18 +371,16 @@ class ExpressionChoice extends Combination
 	 */
 	protected function evaluate()
 	{
-		$result = Thunk::fail();
-
 		$expressions = map($this->expressions, function ($v) { return thunk($v); });
 
-		$index = 0;
+		$results = [];
 		foreach ($expressions as $expression) {
 			$result = thunk($expression->evaluate());
-			if ($result->isFailure()) break;
-			if ($index == $this->offset) break;
+			if ($result->isFailure()) return $result;
+			$results[] = $result;
 		}
 
-		return $result;
+		return $results[$this->offset] ?? Thunk::failure();
 	}
 
 	/**
@@ -407,7 +405,7 @@ class ExpressionOr extends Combination
 	protected function evaluate()
 	{
 		$state = $this->funcuit->saveState();
-		$result = Thunk::fail();
+		$result = Thunk::failure();
 
 		$thunks = map($this->expressions, function ($v) { return thunk($v); });
 

@@ -28,13 +28,13 @@ class Calcurator extends Funcuit
 
 //--- for external --//
 
-	public function runTwoMode($string)
-	{
-		return [
-			'direct' => $this->runCalcurator($string, true),
-			'late' => $this->runCalcurator($string, false)
-		];
-	}
+	// public function runTwoMode($string)
+	// {
+	// 	return [
+	// 		'direct' => $this->runCalcurator($string, true),
+	// 		'late' => $this->runCalcurator($string, false)
+	// 	];
+	// }
 
 	public function runCalcurator($string, $direct)
 	{
